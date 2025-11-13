@@ -50,7 +50,7 @@ install_packages() {
             sudo yum install -y powerline powerline-fonts
             ;;
         *)
-            echo "مدير الحزم غير معتمد"
+            echo "مدير الحزم غير مدعوم" 
             exit 1
             ;;
     esac
@@ -108,5 +108,14 @@ case $SHELL in
         exit 1
         ;;
 esac
+
+# تحديث الطرفية بعد التثبيت
+if [[ $SHELL == *"bash"* ]]; then
+    source "$HOME/.bashrc"
+    echo "تم تحديث الطرفية. يمكنك الآن رؤية تغييرات Powerline."
+elif [[ $SHELL == *"zsh"* ]]; then
+    source "$HOME/.zshrc"
+    echo "تم تحديث الطرفية. يمكنك الآن رؤية تغييرات Powerline."
+fi
 
 echo "تثبيت $TOOL_NAME وإعدادات الطرفية تمت بنجاح بواسطة $DEV_NAME."
