@@ -50,22 +50,71 @@ install_packages() {
             sudo yum install -y powerline powerline-fonts
             ;;
         *)
-            echo "مدير الحزم غير مدعوم" 
+            echo "مدير الحزم غير معتمد"
             exit 1
             ;;
     esac
 }
 
-# تابع لتحديث إعدادات الملف
+# تابع لتحديث إعدادات Bash و Zsh
 update_shell_config() {
     local shell_config_file=$1
-    local config_line="# إعدادات $TOOL_NAME\npowerline-daemon -q\nPOWERLINE_BASH_CONTINUATION=1\nPOWERLINE_BASH_SELECT=1\n. /usr/share/powerline/bindings/bash/powerline.sh"
+    local shell_type=$2
+    
+    case $shell_type in
+        bash)
+            local config_line="# إعدادات $TOOL_NAME\npowerline-daemon -q\nPOWERLINE_BASH_CONTINUATION=1\nPOWERLINE_BASH_SELECT=1\n. /usr/share/powerline/bindings/bash/powerline.sh"
+            ;;
+        zsh)
+            local config_line="# إعدادات $TOOL_NAME\npowerline-daemon -q\n. /usr/share/powerline/bindings/zsh/powerline.zsh"
+            ;;
+        fish)
+            local config_line="# إعدادات $TOOL_NAME\nset fish_function_path \$fish_function_path \"/usr/share/powerline/bindings/fish\"\nsource /usr/share/powerline/bindings/fish/powerline-setup.fish\npowerline-setup"
+            ;;
+    esac
 
     if ! grep -q "powerline" "$shell_config_file"; then
+        # إنشاء المجلد إذا كان غير موجود (لـ Fish)
+        mkdir -p "$(dirname "$shell_config_file")"
         echo -e "\n$config_line" >> "$shell_config_file"
         echo "تم تحديث $shell_config_file بإعدادات $TOOL_NAME"
+        return 0
     else
         echo "$shell_config_file بالفعل يحتوي على إعدادات $TOOL_NAME"
+        return 1
+    fi
+}
+
+# تابع لتحديث الطرفية مباشرة
+refresh_shell() {
+    local shell_type=$1
+    local config_updated=$2
+    
+    if [ "$config_updated" -eq 0 ]; then
+        echo "جاري تحديث الطرفية مباشرة..."
+        
+        case $shell_type in
+            bash)
+                # تشغيل powerline-daemon وتحميل الإعدادات
+                powerline-daemon -q
+                source /usr/share/powerline/bindings/bash/powerline.sh
+                ;;
+            zsh)
+                # تشغيل powerline-daemon وتحميل الإعدادات
+                powerline-daemon -q
+                source /usr/share/powerline/bindings/zsh/powerline.zsh
+                ;;
+            fish)
+                # تحديث إعدادات Fish
+                set fish_function_path $fish_function_path "/usr/share/powerline/bindings/fish"
+                source /usr/share/powerline/bindings/fish/powerline-setup.fish
+                powerline-setup
+                ;;
+        esac
+        
+        echo "✅ تم تحديث الطرفية بنجاح - يمكنك رؤية التغييرات فوراً!"
+    else
+        echo "ℹ️  تم اكتشاف إعدادات سابقة - يرجى إعادة فتح الطرفية أو تشغيل الأمر المناسب لشل الخاص بك"
     fi
 }
 
@@ -92,16 +141,24 @@ else
 fi
 
 # تحديد أي طرفية يستخدمها المستخدم
+current_shell=""
+config_updated=0
+
 case $SHELL in
     *bash*)
-        update_shell_config "$HOME/.bashrc"
+        update_shell_config "$HOME/.bashrc" "bash"
+        config_updated=$?
+        current_shell="bash"
         ;;
     *zsh*)
-        update_shell_config "$HOME/.zshrc"
+        update_shell_config "$HOME/.zshrc" "zsh"
+        config_updated=$?
+        current_shell="zsh"
         ;;
     *fish*)
-        echo "ليس لدينا إعدادات لـ fish في الوقت الحالي."
-        exit 1
+        update_shell_config "$HOME/.config/fish/config.fish" "fish"
+        config_updated=$?
+        current_shell="fish"
         ;;
     *)
         echo "نوع الطرفية غير مدعوم."
@@ -109,13 +166,8 @@ case $SHELL in
         ;;
 esac
 
-# تحديث الطرفية بعد التثبيت
-if [[ $SHELL == *"bash"* ]]; then
-    source "$HOME/.bashrc"
-    echo "تم تحديث الطرفية. يمكنك الآن رؤية تغييرات Powerline."
-elif [[ $SHELL == *"zsh"* ]]; then
-    source "$HOME/.zshrc"
-    echo "تم تحديث الطرفية. يمكنك الآن رؤية تغييرات Powerline."
-fi
+# تحديث الطرفية مباشرة
+refresh_shell "$current_shell" "$config_updated"
 
 echo "تثبيت $TOOL_NAME وإعدادات الطرفية تمت بنجاح بواسطة $DEV_NAME."
+echo "🌟 يمكنك الآن الاستمتاع بـ Powerline في طرفيتك مباشرة!"
